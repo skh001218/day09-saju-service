@@ -1,0 +1,117 @@
+.section {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.section h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.intro {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.intro strong { font-size: 22px; }
+.intro span { color: var(--muted); font-size: 14px; }
+
+.diagram {
+  display: block;
+  width: min(100%, 500px);
+  height: auto;
+  margin: 12px auto 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 24px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.legend span { display: inline-flex; align-items: center; gap: 9px; }
+
+.generationArrow,
+.controlArrow {
+  position: relative;
+  display: inline-block;
+  width: 35px;
+  height: 0;
+  border-top: 4px solid #1f2937;
+}
+
+.generationArrow::after,
+.controlArrow::after {
+  position: absolute;
+  top: -8px;
+  right: -1px;
+  content: "";
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 10px solid #1f2937;
+}
+
+.controlArrow { border-top: 2px solid #59616d; }
+.controlArrow::after {
+  top: -7px;
+  border-left-color: #59616d;
+}
+
+.controlArrow::before {
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  right: 1px;
+  content: "";
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid #fff;
+}
+
+.cycles {
+  margin: 18px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.cycles p { margin: 0; }
+.cycles strong { margin-right: 8px; }
+
+.relations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.relations div {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.relations dt { color: var(--muted); font-size: 13px; }
+.relations dd { margin: 3px 0 0; font-size: 18px; font-weight: 700; }
+
+.note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 460px) {
+  .section { padding: 16px 12px; }
+  .relations { grid-template-columns: 1fr; }
+  .cycles { padding: 10px; font-size: 12px; }
+}
