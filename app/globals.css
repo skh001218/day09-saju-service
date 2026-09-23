@@ -271,7 +271,7 @@ input:focus-visible {
   border-top: 1px solid var(--border);
 }
 
-.interpretation h3 {
+.interpretation > h3 {
   margin: 0 0 18px;
   font-size: 24px;
 }
@@ -281,7 +281,8 @@ input:focus-visible {
   font-size: 17px;
 }
 
-.interpretation p {
+.interpretation > div > p,
+.interpretation > p {
   margin: 0;
   line-height: 1.7;
 }

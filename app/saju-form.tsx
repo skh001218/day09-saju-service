@@ -467,7 +467,6 @@ export default function SajuForm() {
             </dl>
             <p className="note">{chart.method}</p>
             <FiveElementsOverview elements={chart.elements} />
-            <FiveElementsRelations element={chart.dayMaster.element} />
             <div className="interpret-action">
               <p>
                 자세한 해석을 요청하면 계산된 사주 정보가 Gemini로 전달됩니다.
@@ -498,6 +497,7 @@ export default function SajuForm() {
             {interpretation && (
               <section className="interpretation" aria-label="자세한 사주 해석">
                 <h3>자세한 사주 해석</h3>
+                <FiveElementsRelations element={chart.dayMaster.element} />
                 <div>
                   <h4>성향</h4>
                   <p>{interpretation.personality}</p>
