@@ -14,7 +14,7 @@ import {
   loadHistory,
   type SavedResult,
 } from "../lib/saju/history";
-import { parseInterpretation, parseRecommendedInterpretation, type Interpretation, type Recommendation } from "../lib/saju/interpretation";
+import { parseInterpretation, parseRecommendedInterpretation, type CompatibleType, type Interpretation, type Recommendation } from "../lib/saju/interpretation";
 import { parseDatabaseResult, type DatabaseResult } from "../lib/saju/db-history";
 import AuthControls from "./auth-controls";
 import FiveElementsOverview from "./five-elements-overview";
@@ -31,6 +31,7 @@ export default function SajuForm() {
   const [calculatedInput, setCalculatedInput] = useState<SajuInput | null>(null);
   const [interpretation, setInterpretation] = useState<Interpretation | null>(null);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const [compatibleTypes, setCompatibleTypes] = useState<CompatibleType[] | null>(null);
   const [history, setHistory] = useState<SavedResult[]>([]);
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
@@ -109,6 +110,7 @@ export default function SajuForm() {
       setAccountError("");
       setInterpretationError("");
       setRecommendation(null);
+      setCompatibleTypes(null);
       if (activeSavedId === null) setInterpretation(null);
       if (activeAccountId !== null) {
         setDate("");
@@ -117,6 +119,7 @@ export default function SajuForm() {
         setCalculatedInput(null);
         setInterpretation(null);
         setRecommendation(null);
+        setCompatibleTypes(null);
         setActiveAccountId(null);
       }
       activeUserId.current = nextId;
@@ -138,6 +141,7 @@ export default function SajuForm() {
     setCalculatedInput(null);
     setInterpretation(null);
     setRecommendation(null);
+    setCompatibleTypes(null);
     setActiveSavedId(null);
     setActiveAccountId(null);
     setError("");
@@ -167,6 +171,7 @@ export default function SajuForm() {
     interpretationRequestId.current = null;
     setInterpretation(null);
     setRecommendation(null);
+    setCompatibleTypes(null);
     setActiveSavedId(null);
     setActiveAccountId(null);
     setInterpretationError("");
@@ -212,6 +217,7 @@ export default function SajuForm() {
     setStorageNotice("");
     setInterpretation(null);
     setRecommendation(null);
+    setCompatibleTypes(null);
 
     try {
       const response = await fetch("/api/interpret", {
@@ -242,6 +248,7 @@ export default function SajuForm() {
               recommendedClass: reading.recommended_class,
               recommendationReason: reading.recommendation_reason,
             });
+            setCompatibleTypes(reading.compatible_types);
             setStorageNotice("해석은 표시했지만 계정에 저장되지 않았습니다.");
           } catch {
             // A malformed response must not be shown as an interpretation.
@@ -260,6 +267,7 @@ export default function SajuForm() {
       }
       setInterpretation(record.interpretation);
       setRecommendation(record.recommendation);
+      setCompatibleTypes(record.compatibleTypes);
       setAccountHistory((previous) => [record, ...previous.filter((item) => item.id !== record.id)]);
       setActiveAccountId(record.id);
       interpretationRequestId.current = null;
@@ -292,6 +300,7 @@ export default function SajuForm() {
     });
     setInterpretation(record.interpretation);
     setRecommendation(null);
+    setCompatibleTypes(null);
     setActiveSavedId(record.id);
     setActiveAccountId(null);
     setError("");
@@ -313,6 +322,7 @@ export default function SajuForm() {
     });
     setInterpretation(record.interpretation);
     setRecommendation(record.recommendation);
+    setCompatibleTypes(record.compatibleTypes);
     setActiveSavedId(null);
     setActiveAccountId(record.id);
     setError("");
@@ -345,6 +355,7 @@ export default function SajuForm() {
         setCalculatedInput(null);
         setInterpretation(null);
         setRecommendation(null);
+        setCompatibleTypes(null);
         setActiveAccountId(null);
       }
     } catch (caught) {
@@ -365,6 +376,7 @@ export default function SajuForm() {
         setCalculatedInput(null);
         setInterpretation(null);
         setRecommendation(null);
+        setCompatibleTypes(null);
         setActiveSavedId(null);
       }
     } catch {
@@ -510,6 +522,27 @@ export default function SajuForm() {
                     </>
                   ) : (
                     <p>이전 기록에는 직업 추천이 없습니다.</p>
+                  )}
+                </div>
+                <div className="compatible-types">
+                  <h4>잘 맞는 사람 유형</h4>
+                  {compatibleTypes ? (
+                    <>
+                      <ul>
+                        {compatibleTypes.map((item) => (
+                          <li key={item.element}>
+                            <h5>{item.element} 유형</h5>
+                            <p>{item.tendency}</p>
+                            <p>{item.reason}</p>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="interpretation-note">
+                        오행에 빗댄 참고용 안내예요. 실제 관계는 가치관과 행동, 소통에 따라 달라집니다.
+                      </p>
+                    </>
+                  ) : (
+                    <p>이전 기록에는 사람 유형 안내가 없습니다.</p>
                   )}
                 </div>
                 <p className="interpretation-note">

@@ -1,5 +1,5 @@
 import type { SajuChart } from "./chart";
-import { parseInterpretation, type Interpretation, type Recommendation } from "./interpretation";
+import { parseCompatibleTypes, parseInterpretation, type CompatibleType, type Interpretation, type Recommendation } from "./interpretation";
 
 export type DatabaseResult = {
   id: string;
@@ -9,6 +9,7 @@ export type DatabaseResult = {
   chart: SajuChart;
   interpretation: Interpretation;
   recommendation: Recommendation | null;
+  compatibleTypes: CompatibleType[] | null;
   model: string;
 };
 
@@ -85,6 +86,9 @@ export function parseDatabaseResult(value: unknown): DatabaseResult | null {
         recommendedClass: (recommendedClass as string).trim(),
         recommendationReason: (recommendationReason as string).trim(),
       } : null,
+      compatibleTypes: row.compatible_types == null && row.compatibleTypes == null
+        ? null
+        : parseCompatibleTypes(row.compatible_types ?? row.compatibleTypes),
       model: row.model,
     };
   } catch {

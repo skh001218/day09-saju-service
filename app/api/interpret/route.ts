@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const { supabase, userId } = auth;
   const { data: existing, error: existingError } = await supabase
     .from("saju_interpretations")
-    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, model")
+    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, compatible_types, model")
     .eq("user_id", userId)
     .eq("request_id", requestId)
     .maybeSingle();
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
         recommended_class: record.recommendation.recommendedClass,
         recommendation_reason: record.recommendation.recommendationReason,
       } : {}),
+      ...(record.compatibleTypes ? { compatible_types: record.compatibleTypes } : {}),
     }, model: record.model, record }, 200);
   }
 
@@ -106,18 +107,25 @@ export async function POST(request: Request) {
       ...interpretation,
       model: GEMINI_MODEL,
     })
-    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, model")
+    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, compatible_types, model")
     .single();
 
   if (insertError?.code === "23505") {
     const { data: repeated, error: repeatedError } = await supabase
       .from("saju_interpretations")
-      .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, model")
+      .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, compatible_types, model")
       .eq("user_id", userId)
       .eq("request_id", requestId)
       .maybeSingle();
     const record = !repeatedError && repeated ? parseDatabaseResult(repeated) : null;
-    if (record) return result({ interpretation: record.interpretation, model: record.model, record }, 200);
+    if (record) return result({ interpretation: {
+      ...record.interpretation,
+      ...(record.recommendation ? {
+        recommended_class: record.recommendation.recommendedClass,
+        recommendation_reason: record.recommendation.recommendationReason,
+      } : {}),
+      ...(record.compatibleTypes ? { compatible_types: record.compatibleTypes } : {}),
+    }, model: record.model, record }, 200);
   }
   const record = !insertError && inserted ? parseDatabaseResult(inserted) : null;
   if (!record) {

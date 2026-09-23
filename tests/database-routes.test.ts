@@ -20,6 +20,7 @@ type Row = {
   cautions: string;
   recommended_class: string | null;
   recommendation_reason: string | null;
+  compatible_types: Array<{ element: string; tendency: string; reason: string }> | null;
   model: string;
 };
 
@@ -34,6 +35,10 @@ const interpretation = {
   cautions: "가끔은 쉬면서 주변의 도움을 받아 보세요.",
   recommended_class: "바드",
   recommendation_reason: "주변을 차분하게 챙기는 성향이 동료를 지원하는 바드의 플레이와 잘 어울려요.",
+  compatible_types: [
+    { element: "목", tendency: "새로운 시도를 함께 즐기는 편이에요.", reason: "차분히 중심을 잡는 내 성향에 새로운 관점을 더하며 생각을 나눌 수 있어요." },
+    { element: "수", tendency: "상대의 말을 듣고 여유롭게 생각하는 편이에요.", reason: "꾸준히 나아가는 내 모습과 만나 서로의 속도를 살피며 소통할 수 있어요." },
+  ],
 };
 
 function row(id: string, userId = userA, request = requestId): Row {
@@ -229,6 +234,7 @@ test("중복 request_id는 저장된 결과를 반환하고 Gemini를 다시 호
     recommendedClass: interpretation.recommended_class,
     recommendationReason: interpretation.recommendation_reason,
   });
+  assert.deepEqual(payload.record.compatibleTypes, interpretation.compatible_types);
   assert.equal(state.geminiCalls, 0);
   assert.equal(state.insertCalls, 0);
 });
@@ -238,6 +244,7 @@ test("새 해석은 검증된 사용자 ID와 서버 계산 결과로 한 번 �
   const response = await interpretRoute.POST!(request({
     date: "2000-01-01", time: "12:00", request_id: requestId,
     user_id: userB, chart: { pillars: [] }, personality: "forged",
+    compatible_types: [{ element: "금", tendency: "가짜", reason: "가짜" }],
   }));
   assert.equal(response.status, 200);
   assert.equal(state.geminiCalls, 1);
@@ -247,9 +254,11 @@ test("새 해석은 검증된 사용자 ID와 서버 계산 결과로 한 번 �
   assert.equal(state.inserted?.personality, interpretation.personality);
   assert.equal(state.inserted?.recommended_class, interpretation.recommended_class);
   assert.equal(state.inserted?.recommendation_reason, interpretation.recommendation_reason);
+  assert.deepEqual(state.inserted?.compatible_types, interpretation.compatible_types);
   const payload = await response.json();
   assert.equal(payload.record.id, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
   assert.equal(payload.record.recommendation.recommendedClass, "바드");
+  assert.deepEqual(payload.record.compatibleTypes, interpretation.compatible_types);
 });
 
 test("동시 저장 충돌이면 같은 request_id의 기록을 반환한다", async () => {
@@ -258,6 +267,7 @@ test("동시 저장 충돌이면 같은 request_id의 기록을 반환한다", a
   const response = await interpretRoute.POST!(request({ date: "2000-01-01", time: "12:00", request_id: requestId }));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).record.id, "22222222-2222-4222-8222-222222222222");
+  assert.deepEqual(parseDatabaseResult(state.rows[0])?.compatibleTypes, interpretation.compatible_types);
   assert.equal(state.rows.length, 1);
 });
 
@@ -275,11 +285,12 @@ test("DB 저장 실패는 해석을 표시할 수 있게 돌려주되 저장 성
 test("과거 DB 기록은 추천 없이 조회하며 Gemini를 자동으로 다시 호출하지 않는다", async () => {
   reset();
   state.rows.push({ ...row("11111111-1111-4111-8111-111111111111"),
-    recommended_class: null, recommendation_reason: null });
+    recommended_class: null, recommendation_reason: null, compatible_types: null });
   const response = await interpretRoute.POST!(request({ date: "2000-01-01", time: "12:00", request_id: requestId }));
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.record.recommendation, null);
+  assert.equal(payload.record.compatibleTypes, null);
   assert.equal(state.geminiCalls, 0);
   assert.equal(state.insertCalls, 0);
 });
@@ -290,17 +301,28 @@ test("DB 행에 추천 직업과 이유가 한쪽만 있으면 손상된 결과�
   assert.equal(parseDatabaseResult({ ...sample, recommended_class: null }), null);
 });
 
+test("DB 행은 이전 유형 없음과 새 유효 유형을 구분하고 손상된 유형을 거절한다", () => {
+  const sample = row("11111111-1111-4111-8111-111111111111");
+  assert.deepEqual(parseDatabaseResult(sample)?.compatibleTypes, interpretation.compatible_types);
+  assert.equal(parseDatabaseResult({ ...sample, compatible_types: null })?.compatibleTypes, null);
+  assert.equal(parseDatabaseResult({ ...sample, compatible_types: undefined })?.compatibleTypes, null);
+  assert.equal(parseDatabaseResult({ ...sample, compatible_types: [interpretation.compatible_types[0]] }), null);
+  assert.equal(parseDatabaseResult({ ...sample, compatible_types: [interpretation.compatible_types[0], interpretation.compatible_types[0]] }), null);
+});
+
 test("계정 목록은 기존 추천과 추천 없는 과거 기록을 모두 반환한다", async () => {
   reset();
   state.rows.push(row("11111111-1111-4111-8111-111111111111"));
   state.rows.push({ ...row("22222222-2222-4222-8222-222222222222", userA, secondRequestId),
-    recommended_class: null, recommendation_reason: null });
+    recommended_class: null, recommendation_reason: null, compatible_types: null });
   const response = await listRoute.GET!(new Request("http://localhost:3000/api/results"));
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.records.length, 2);
   assert.equal(payload.records.find((item: { id: string }) => item.id === "11111111-1111-4111-8111-111111111111").recommendation.recommendedClass, "바드");
   assert.equal(payload.records.find((item: { id: string }) => item.id === "22222222-2222-4222-8222-222222222222").recommendation, null);
+  assert.deepEqual(payload.records.find((item: { id: string }) => item.id === "11111111-1111-4111-8111-111111111111").compatibleTypes, interpretation.compatible_types);
+  assert.equal(payload.records.find((item: { id: string }) => item.id === "22222222-2222-4222-8222-222222222222").compatibleTypes, null);
 });
 
 test("005 migration은 추천 필드 쌍의 누락을 허용하지 않고 과거 행을 보존한다", async () => {
@@ -311,6 +333,13 @@ test("005 migration은 추천 필드 쌍의 누락을 허용하지 않고 과거
   assert.match(names, /recommended_class\s+is\s+null/i);
   assert.match(names, /recommendation_reason\s+is\s+null/i);
   assert.doesNotMatch(names, /update\s+public\.saju_interpretations/i);
+});
+
+test("008 기능 migration은 과거 행을 보존하면서 유형 배열 저장 열을 추가한다", async () => {
+  const sql = await readFile(join(process.cwd(), "supabase/migrations/20260923000300_add_compatible_types.sql"), "utf8");
+  assert.match(sql, /add column[^;]*compatible_types\s+jsonb/i);
+  assert.doesNotMatch(sql, /update\s+public\.saju_interpretations/i);
+  assert.doesNotMatch(sql, /drop\s+table/i);
 });
 
 test("계정 목록은 본인 기록만 반환하고 페이지를 나눈다", async () => {
