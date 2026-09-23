@@ -14,3 +14,4 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [x] `006-five-elements-overview.md`
 - [x] `007-top-login-controls.md`
 - [ ] `008-compatible-person-types.md`
+- [x] `009-five-elements-relations.md`

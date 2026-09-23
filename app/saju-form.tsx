@@ -18,6 +18,7 @@ import { parseInterpretation, parseRecommendedInterpretation, type CompatibleTyp
 import { parseDatabaseResult, type DatabaseResult } from "../lib/saju/db-history";
 import AuthControls from "./auth-controls";
 import FiveElementsOverview from "./five-elements-overview";
+import FiveElementsRelations from "./five-elements-relations";
 import { LostArkClassImage } from "./lost-ark-class-image";
 
 type AuthUser = { id: string; email?: string };
@@ -466,6 +467,7 @@ export default function SajuForm() {
             </dl>
             <p className="note">{chart.method}</p>
             <FiveElementsOverview elements={chart.elements} />
+            <FiveElementsRelations element={chart.dayMaster.element} />
             <div className="interpret-action">
               <p>
                 자세한 해석을 요청하면 계산된 사주 정보가 Gemini로 전달됩니다.
