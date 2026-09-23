@@ -33,8 +33,22 @@ export async function interpretWithGemini(
           cautions: { type: "STRING" },
           recommended_class: { type: "STRING" },
           recommendation_reason: { type: "STRING" },
+          compatible_types: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                element: { type: "STRING", enum: ["목", "화", "토", "금", "수"] },
+                tendency: { type: "STRING" },
+                reason: { type: "STRING" },
+              },
+              required: ["element", "tendency", "reason"],
+            },
+            minItems: 2,
+            maxItems: 3,
+          },
         },
-        required: ["personality", "strengths", "cautions", "recommended_class", "recommendation_reason"],
+        required: ["personality", "strengths", "cautions", "recommended_class", "recommendation_reason", "compatible_types"],
       },
     },
   });

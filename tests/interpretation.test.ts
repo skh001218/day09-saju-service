@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { calculate } from "../lib/saju/chart";
-import { makeInterpretationPrompt, parseInterpretation, parseRecommendedInterpretation } from "../lib/saju/interpretation";
+import { makeInterpretationPrompt, parseCompatibleTypes, parseInterpretation, parseRecommendedInterpretation } from "../lib/saju/interpretation";
 import { GEMINI_MODEL, GeminiError, interpretWithGemini } from "../lib/saju/gemini";
 
 const chart = calculate({ date: "2000-01-01", time: "12:00", calendar: "solar", topic: "general" });
@@ -11,6 +11,10 @@ const interpretation = {
   cautions: "가끔은 쉬어 가며 주변의 도움도 받아 보세요.",
   recommended_class: "바드",
   recommendation_reason: "차분히 주변을 돕는 모습이 동료를 지원하는 바드의 플레이와 잘 어울려요.",
+  compatible_types: [
+    { element: "목", tendency: "새로운 일을 함께 시도하고 생각을 나누는 편이에요.", reason: "차분히 중심을 잡는 내 모습에 새로운 시도를 제안해 대화의 폭을 넓혀 줄 수 있어요." },
+    { element: "수", tendency: "상대의 말을 듣고 여러 가능성을 살펴보는 편이에요.", reason: "꾸준히 실천하는 내 성향과 만나 서로의 생각을 충분히 듣고 속도를 맞출 수 있어요." },
+  ],
 };
 
 test("Gemini 요청문에는 계산한 사주만 담고 원래 날짜와 시간은 넣지 않는다", () => {
@@ -22,6 +26,9 @@ test("Gemini 요청문에는 계산한 사주만 담고 원래 날짜와 시간�
   assert.match(prompt, /로스트아크/);
   assert.match(prompt, /바드/);
   assert.match(prompt, /오락|재미/);
+  assert.match(prompt, /잘 맞는 사람|함께 지내기/);
+  assert.match(prompt, /강약|결핍/);
+  assert.match(prompt, /관계|소통/);
 });
 
 test("새 해석은 추천 직업과 이유까지 검사하고 공백을 정리한다", () => {
@@ -38,11 +45,26 @@ test("새 해석은 추천 직업과 이유까지 검사하고 공백을 정리�
     { ...interpretation, recommended_class: "바드, 소서리스" },
     { ...interpretation, recommendation_reason: " " },
     { ...interpretation, recommendation_reason: "가".repeat(301) },
-  ]) assert.throws(() => parseRecommendedInterpretation(invalid), /해석 형식/);
+    { ...interpretation, compatible_types: undefined },
+    { ...interpretation, compatible_types: [] },
+    { ...interpretation, compatible_types: [...interpretation.compatible_types, ...interpretation.compatible_types] },
+    { ...interpretation, compatible_types: [interpretation.compatible_types[0], interpretation.compatible_types[0]] },
+    { ...interpretation, compatible_types: [{ ...interpretation.compatible_types[0], element: "빛" }, interpretation.compatible_types[1]] },
+    { ...interpretation, compatible_types: [{ ...interpretation.compatible_types[0], tendency: " " }, interpretation.compatible_types[1]] },
+    { ...interpretation, compatible_types: [{ ...interpretation.compatible_types[0], reason: "가".repeat(301) }, interpretation.compatible_types[1]] },
+  ]) assert.throws(() => parseRecommendedInterpretation(invalid), /형식/);
+});
+
+test("사람 유형은 서로 다른 오행 2~3개만 받고 문장 공백을 정리한다", () => {
+  assert.deepEqual(parseCompatibleTypes(interpretation.compatible_types), interpretation.compatible_types);
+  const third = { element: "화", tendency: "따뜻한 표현으로 대화를 시작하는 편이에요.", reason: "내 신중한 모습에 친근한 대화를 더해 서로 편하게 생각을 나눌 수 있어요." };
+  assert.deepEqual(parseCompatibleTypes([...interpretation.compatible_types, third]).length, 3);
+  const spaced = [{ ...interpretation.compatible_types[0], tendency: `  ${interpretation.compatible_types[0].tendency}  ` }, interpretation.compatible_types[1]];
+  assert.equal(parseCompatibleTypes(spaced)[0].tendency, interpretation.compatible_types[0].tendency);
 });
 
 test("기존 브라우저 기록의 세 항목 해석 형식은 계속 읽을 수 있다", () => {
-  const { recommended_class: _recommendedClass, recommendation_reason: _recommendationReason, ...oldInterpretation } = interpretation;
+  const { recommended_class: _recommendedClass, recommendation_reason: _recommendationReason, compatible_types: _compatibleTypes, ...oldInterpretation } = interpretation;
   assert.deepEqual(parseInterpretation(oldInterpretation), oldInterpretation);
 });
 
@@ -62,7 +84,7 @@ test("Gemini 응답 성공 시 추천까지 읽고 인증값을 요청 본문에
   assert.ok(!requestBody.includes("12:00"));
   const request = JSON.parse(requestBody) as { generationConfig: { responseMimeType: string; responseSchema: { required: string[] } } };
   assert.equal(request.generationConfig.responseMimeType, "application/json");
-  assert.deepEqual(request.generationConfig.responseSchema.required, ["personality", "strengths", "cautions", "recommended_class", "recommendation_reason"]);
+  assert.deepEqual(request.generationConfig.responseSchema.required, ["personality", "strengths", "cautions", "recommended_class", "recommendation_reason", "compatible_types"]);
 });
 
 test("Gemini 사용량 제한과 연결 실패를 각각 오류로 전달한다", async () => {
@@ -105,7 +127,9 @@ test("Gemini 503 오류가 계속되면 세 번만 요청하고 503 안내를 �
 test("Gemini가 잘못된 JSON이나 빠진 항목을 보내면 해석을 만들지 않는다", async () => {
   for (const content of ["{broken", JSON.stringify({ personality: interpretation.personality }),
     JSON.stringify({ ...interpretation, recommended_class: "없는 직업" }),
-    JSON.stringify({ ...interpretation, recommendation_reason: " " })]) {
+    JSON.stringify({ ...interpretation, recommendation_reason: " " }),
+    JSON.stringify({ ...interpretation, compatible_types: null }),
+    JSON.stringify({ ...interpretation, compatible_types: [interpretation.compatible_types[0]] })]) {
     const fetcher: typeof fetch = async () => Response.json({ candidates: [{ content: { parts: [{ text: content }] } }] });
     await assert.rejects(interpretWithGemini(chart, "test-key", fetcher), (error: unknown) =>
       error instanceof GeminiError && error.status === 502);

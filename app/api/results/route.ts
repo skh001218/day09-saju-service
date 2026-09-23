@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const offset = cursor ? Number(cursor) : 0;
   const { data, error } = await auth.supabase
     .from("saju_interpretations")
-    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, model")
+    .select("id, created_at, birth_date, birth_time, chart, personality, strengths, cautions, recommended_class, recommendation_reason, compatible_types, model")
     .eq("user_id", auth.userId)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })

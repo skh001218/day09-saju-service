@@ -301,6 +301,40 @@ input:focus-visible {
   margin-top: 0;
 }
 
+.compatible-types {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.compatible-types h4 {
+  margin-top: 0;
+}
+
+.compatible-types ul {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compatible-types li {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft);
+}
+
+.compatible-types h5 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.compatible-types li p + p {
+  margin-top: 6px;
+}
+
 .game-recommendation .recommended-class {
   font-size: 22px;
   font-weight: 700;
