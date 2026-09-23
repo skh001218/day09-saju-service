@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">처음 만나는 쉬운 사주 오행 미리보기</title>
+  <desc id="description">목은 나무, 화는 불꽃, 토는 산, 금은 금속, 수는 물결로 표현한 다섯 오행 카드</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fbfaf7"/>
+      <stop offset="1" stop-color="#f1f3f5"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#c5f4dc"/><stop offset="1" stop-color="#e6f9ec"/></linearGradient>
+    <linearGradient id="fire" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd1b6"/><stop offset="1" stop-color="#fff0de"/></linearGradient>
+    <linearGradient id="earth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7dfa5"/><stop offset="1" stop-color="#fff2c9"/></linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dce5eb"/><stop offset="1" stop-color="#f1f4f6"/></linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#bdd9f0"/><stop offset="1" stop-color="#e7f1fb"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="9" stdDeviation="15" flood-color="#263342" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1060" cy="10" r="235" fill="#e7f0e9" opacity="0.65"/>
+  <circle cx="84" cy="620" r="198" fill="#e9eef4" opacity="0.8"/>
+  <rect x="64" y="56" width="230" height="43" rx="21.5" fill="#e5eee9"/>
+  <text x="179" y="85" text-anchor="middle" font-family="Malgun Gothic, sans-serif" font-size="19" font-weight="700" fill="#2b5c4d">SAJU · FIVE ELEMENTS</text>
+  <text x="64" y="178" font-family="Malgun Gothic, sans-serif" font-size="64" font-weight="700" fill="#202b31">처음 만나는 쉬운 사주</text>
+  <text x="67" y="226" font-family="Malgun Gothic, sans-serif" font-size="26" fill="#5b6970">나의 오행을 쉽고 선명하게 알아보세요</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="282" width="198" height="242" rx="25" fill="url(#wood)"/>
+    <rect x="280" y="282" width="198" height="242" rx="25" fill="url(#fire)"/>
+    <rect x="496" y="282" width="198" height="242" rx="25" fill="url(#earth)"/>
+    <rect x="712" y="282" width="198" height="242" rx="25" fill="url(#metal)"/>
+    <rect x="928" y="282" width="198" height="242" rx="25" fill="url(#water)"/>
+  </g>
+
+  <!-- 목: 싹과 나무 -->
+  <g fill="none" stroke="#2f7655" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M163 433v-61"/>
+    <path d="M163 390c-22 0-37-11-39-32 25-1 39 11 39 32Z" fill="#6fc79a"/>
+    <path d="M163 377c1-24 16-38 40-40-1 25-17 39-40 40Z" fill="#88d9ab"/>
+    <path d="M133 435h60"/>
+  </g>
+
+  <!-- 화: 불꽃 -->
+  <path d="M379 337c3 24-12 31-10 49-13-8-15-19-11-34-22 19-29 37-27 53 2 24 20 41 48 41s48-19 48-45c0-18-10-32-24-47 1 20-10 31-10 31 0-21-5-35-14-48Z" fill="#ed704a" stroke="#c75239" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M380 389c-9 14-14 23-14 33 0 9 6 16 15 16s16-7 16-16c0-10-7-18-17-33Z" fill="#ffca74"/>
+
+  <!-- 토: 산과 땅 -->
+  <path d="M530 435 589 347l69 88Z" fill="#b78b51" stroke="#896d4c" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m567 381 22-34 27 40-20-8-12 9Z" fill="#fff3ce"/>
+  <path d="M523 439h143" stroke="#896d4c" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- 금: 금속의 반짝임 -->
+  <path d="m811 338 54 49-54 56-54-56Z" fill="#8aa4b2" stroke="#577282" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m811 338 19 49-19 56-19-56Z" fill="#d2e1e7"/>
+  <path d="m757 387 54 56 19-56Z" fill="#a9bfca"/>
+  <path d="m811 338-19 49h-35Z" fill="#ecf4f5"/>
+  <path d="m811 338 19 49h35Z" fill="#c3d5db"/>
+
+  <!-- 수: 물결 -->
+  <g fill="none" stroke="#417bae" stroke-width="9" stroke-linecap="round">
+    <path d="M965 373c17 0 17 15 34 15s17-15 34-15 17 15 34 15 17-15 34-15"/>
+    <path d="M965 405c17 0 17 15 34 15s17-15 34-15 17 15 34 15 17-15 34-15"/>
+  </g>
+
+  <g font-family="Malgun Gothic, sans-serif" font-size="32" font-weight="700" text-anchor="middle" fill="#233038">
+    <text x="163" y="492">목</text>
+    <text x="379" y="492">화</text>
+    <text x="595" y="492">토</text>
+    <text x="811" y="492">금</text>
+    <text x="1027" y="492">수</text>
+  </g>
+  <text x="66" y="582" font-family="Malgun Gothic, sans-serif" font-size="21" fill="#69777e">사주 계산 · 쉬운 성향 설명 · 오행 관계</text>
+  <text x="1124" y="582" text-anchor="end" font-family="Malgun Gothic, sans-serif" font-size="20" font-weight="700" fill="#547061">목 · 화 · 토 · 금 · 수</text>
+</svg>
