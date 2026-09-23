@@ -373,8 +373,15 @@ export default function SajuForm() {
   }
 
   return (
-    <section className="input-card" aria-labelledby="input-title">
+    <>
       <AuthControls onAuthChange={handleAuthChange} />
+      <header className="page-header">
+        <h1>내 사주를 확인해보세요.</h1>
+        <p className="intro">
+          생년월일과 태어난 시간을 입력하면 기본 사주를 계산합니다.
+        </p>
+      </header>
+      <section className="input-card" aria-labelledby="input-title">
       <h2 id="input-title">언제 태어나셨나요?</h2>
       <p className="form-intro">양력 생년월일과 태어난 시간을 입력해주세요.</p>
       <form onSubmit={handleSubmit}>
@@ -582,5 +589,6 @@ export default function SajuForm() {
         )}
       </section>
     </section>
+    </>
   );
 }
