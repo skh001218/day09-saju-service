@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { calculate, todayInKorea } from "../../../../lib/saju/chart";
-import { getDailyFortune } from "../../../../lib/saju/daily-fortune";
+import { FORTUNE_VERSION, getDailyFortune } from "../../../../lib/saju/daily-fortune";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -38,46 +38,54 @@ export async function GET(request: Request) {
   let saved = 0;
 
   while (true) {
-    let query = admin.from("saju_profiles")
-      .select("user_id, birth_date, birth_time")
+    let query = admin.from("saju_interpretations")
+      .select("id, user_id, birth_date, birth_time, created_at")
       .order("user_id", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(PAGE_SIZE);
     if (cursor) query = query.gt("user_id", cursor);
-    const { data: profiles, error } = await query;
-    if (error || !profiles) return result({ error: "프로필 목록을 가져오지 못했습니다.", saved }, 503);
-    if (profiles.length === 0) break;
+    const { data: interpretations, error } = await query;
+    if (error || !interpretations) return result({ error: "해석 기록을 가져오지 못했습니다.", saved }, 503);
+    if (interpretations.length === 0) break;
 
     const rows = [];
-    for (const profile of profiles) {
+    const seen = new Set<string>();
+    for (const interpretation of interpretations) {
+      if (seen.has(interpretation.user_id)) continue;
+      seen.add(interpretation.user_id);
       try {
         const chart = calculate({
-          date: profile.birth_date,
-          time: String(profile.birth_time).slice(0, 5),
+          date: interpretation.birth_date,
+          time: String(interpretation.birth_time).slice(0, 5),
           calendar: "solar",
           topic: "general",
         });
         const fortune = getDailyFortune(chart, date);
         rows.push({
-          user_id: profile.user_id,
+          user_id: interpretation.user_id,
+          birth_date: interpretation.birth_date,
+          birth_time: interpretation.birth_time,
           fortune_date: date,
           today_pillar: fortune.todayPillar,
           flow: fortune.flow,
           action: fortune.action,
           caution: fortune.caution,
-          generated_at: new Date().toISOString(),
+          fortune_version: FORTUNE_VERSION,
         });
       } catch {
-        return result({ error: "저장된 출생정보로 운세를 계산하지 못했습니다.", saved }, 503);
+        return result({ error: "해석 기록의 출생정보로 운세를 계산하지 못했습니다.", saved }, 503);
       }
     }
 
-    const written = await admin.from("daily_fortunes").upsert(rows, {
-      onConflict: "user_id,fortune_date",
+    const written = await admin.from("saju_daily_fortunes").upsert(rows, {
+      onConflict: "user_id,birth_date,birth_time,fortune_date",
+      ignoreDuplicates: true,
     });
     if (written.error) return result({ error: "운세를 저장하지 못했습니다.", saved }, 503);
     saved += rows.length;
-    cursor = profiles[profiles.length - 1].user_id;
-    if (profiles.length < PAGE_SIZE) break;
+    cursor = interpretations[interpretations.length - 1].user_id;
+    if (interpretations.length < PAGE_SIZE) break;
   }
 
   return result({ date, saved }, 200);

@@ -45,7 +45,6 @@ export default function SajuForm() {
   const [error, setError] = useState("");
   const [interpretationError, setInterpretationError] = useState("");
   const [storageNotice, setStorageNotice] = useState("");
-  const [profileError, setProfileError] = useState("");
   const [loading, setLoading] = useState(false);
   const requestNumber = useRef(0);
   const pendingRequest = useRef<AbortController | null>(null);
@@ -112,7 +111,6 @@ export default function SajuForm() {
       setAccountCursor(null);
       setAccountError("");
       setInterpretationError("");
-      setProfileError("");
       setRecommendation(null);
       setCompatibleTypes(null);
       if (activeSavedId === null) setInterpretation(null);
@@ -151,7 +149,6 @@ export default function SajuForm() {
     setError("");
     setInterpretationError("");
     setStorageNotice("");
-    setProfileError("");
   }
 
   function handleInvalidInputOnBlur(event: FocusEvent<HTMLInputElement>, field: "date" | "time") {
@@ -181,7 +178,6 @@ export default function SajuForm() {
     setActiveAccountId(null);
     setInterpretationError("");
     setStorageNotice("");
-    setProfileError("");
     const input: SajuInput = {
       date,
       time,
@@ -194,8 +190,6 @@ export default function SajuForm() {
       setChart(calculate(input));
       setCalculatedInput(input);
       setError("");
-      const ownerId = authUser?.id;
-      if (ownerId) void saveProfile(input, ownerId);
     } catch (caught) {
       setChart(null);
       setCalculatedInput(null);
@@ -204,27 +198,6 @@ export default function SajuForm() {
           ? caught.message
           : "계산하지 못했습니다. 입력을 확인해주세요.",
       );
-    }
-  }
-
-  async function saveProfile(input: SajuInput, ownerId: string) {
-    try {
-      const response = await fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: input.date, time: input.time }),
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        const payload: unknown = await response.json().catch(() => ({}));
-        const message = payload && typeof payload === "object" && "error" in payload &&
-          typeof payload.error === "string" ? payload.error : "계정에 출생정보를 저장하지 못했습니다. 다시 계산하면 재시도할 수 있어요.";
-        throw new Error(message);
-      }
-    } catch (caught) {
-      if (activeUserId.current === ownerId) {
-        setProfileError(caught instanceof Error ? caught.message : "계정에 출생정보를 저장하지 못했습니다. 다시 계산하면 재시도할 수 있어요.");
-      }
     }
   }
 
@@ -462,12 +435,11 @@ export default function SajuForm() {
         />
 
         <button type="submit">내 사주 알아보기</button>
-        {authUser && <p className="note">로그인 중 계산하면 생년월일과 출생시간이 계정에 저장되어 매일 운세 생성에 사용됩니다.</p>}
+        {authUser && <p className="note">자세한 해석을 계정에 저장하면 그 기록의 생년월일과 출생시간으로 매일 운세를 생성합니다.</p>}
       </form>
 
       <div className="feedback" aria-live="polite">
         {error && <p className="error">{error}</p>}
-        {profileError && <p className="error">{profileError}</p>}
         {chart && (
           <section className="result" aria-labelledby="result-title">
             <p className="result-label">계산 결과</p>
