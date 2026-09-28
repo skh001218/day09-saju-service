@@ -284,6 +284,20 @@ input:focus-visible {
   line-height: 1.6;
 }
 
+.daily-fortune-save {
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.daily-fortune-save p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.daily-fortune-save button {
+  margin-top: 8px;
+}
+
 .interpret-action {
   margin-top: 24px;
   padding-top: 20px;

@@ -497,7 +497,14 @@ export default function SajuForm() {
             </dl>
             <p className="note">{chart.method}</p>
             <FiveElementsOverview elements={chart.elements} />
-            <DailyFortuneSection chart={chart} />
+            {calculatedInput && (
+              <DailyFortuneSection
+                chart={chart}
+                birthDate={calculatedInput.date}
+                birthTime={calculatedInput.time}
+                userId={authUser?.id ?? null}
+              />
+            )}
             <div className="interpret-action">
               <p>
                 자세한 해석을 요청하면 계산된 사주 정보가 Gemini로 전달됩니다.
