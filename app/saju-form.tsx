@@ -21,6 +21,7 @@ import FiveElementsOverview from "./five-elements-overview";
 import FiveElementsRelations from "./five-elements-relations";
 import { LostArkClassImage } from "./lost-ark-class-image";
 import DailyFortuneSection from "./daily-fortune";
+import DailyTopicFortuneSection from "./daily-topic-fortune";
 
 type AuthUser = { id: string; email?: string };
 
@@ -557,6 +558,15 @@ export default function SajuForm() {
                     <p>이전 기록에는 사람 유형 안내가 없습니다.</p>
                   )}
                 </div>
+                {authUser && activeAccountId && calculatedInput && (
+                  <DailyTopicFortuneSection
+                    key={`${authUser.id}|${activeAccountId}|${calculatedInput.date}|${calculatedInput.time}`}
+                    birthDate={calculatedInput.date}
+                    birthTime={calculatedInput.time}
+                    userId={authUser.id}
+                    recordId={activeAccountId}
+                  />
+                )}
                 <p className="interpretation-note">
                   전통적 사주 해석을 참고용으로 풀어쓴 내용이며, 실제 성격이나 미래를 확정하지 않습니다.
                 </p>

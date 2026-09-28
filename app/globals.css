@@ -389,6 +389,19 @@ input:focus-visible {
   margin-top: 6px;
 }
 
+.daily-topic-fortune {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.daily-topic-fortune h4 { margin: 0 0 8px; }
+.daily-topic-fortune dl { display: grid; gap: 12px; }
+.daily-topic-fortune dt { font-weight: 700; }
+.daily-topic-fortune dd { margin: 4px 0 0; line-height: 1.6; }
+
 .game-recommendation .recommended-class {
   font-size: 22px;
   font-weight: 700;
