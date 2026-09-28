@@ -245,6 +245,45 @@ input:focus-visible {
   font-size: 14px;
 }
 
+.daily-fortune {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.daily-fortune-date,
+.daily-fortune-note {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.daily-fortune h3 {
+  margin: 4px 0 16px;
+  font-size: 20px;
+}
+
+.daily-fortune dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.daily-fortune dt {
+  font-weight: 700;
+}
+
+.daily-fortune dd {
+  margin: 4px 0 0;
+  line-height: 1.6;
+}
+
+.daily-fortune-note {
+  margin: 16px 0 0;
+  line-height: 1.6;
+}
+
 .interpret-action {
   margin-top: 24px;
   padding-top: 20px;

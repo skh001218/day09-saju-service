@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculate, validateInput, type SajuInput } from "../lib/saju/chart";
+import { calculate, todayInKorea, validateInput, type SajuInput } from "../lib/saju/chart";
 
 const base: SajuInput = {
   date: "2005-12-23",
@@ -94,4 +94,11 @@ test("불필요한 개인정보와 클라이언트 계산값을 무시한다", (
   assert.equal("nickname" in input, false);
   assert.equal("email" in input, false);
   assert.equal("chart" in input, false);
+});
+
+test("한국 날짜는 브라우저와 서버의 현지 시간대와 무관하게 자정에 바뀐다", () => {
+  assert.equal(todayInKorea(new Date("2026-09-27T14:59:59.999Z")), "2026-09-27");
+  assert.equal(todayInKorea(new Date("2026-09-27T15:00:00.000Z")), "2026-09-28");
+  assert.equal(todayInKorea(new Date("2026-09-28T14:59:59.999Z")), "2026-09-28");
+  assert.equal(todayInKorea(new Date("2026-09-28T15:00:00.000Z")), "2026-09-29");
 });
