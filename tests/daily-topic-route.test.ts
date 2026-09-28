@@ -23,33 +23,49 @@ type State = {
   rows: Row[];
   inserted: Row | null;
   inserts: number;
+  updates: number;
   generates: number;
+  retries: number[];
+  seenOtherTopics: unknown[][];
+  generated: Array<typeof texts>;
   failReading: boolean;
   failLookup: boolean;
+  failSameDay: boolean;
   failInsert: boolean;
+  failUpdate: boolean;
   failGenerate: boolean;
   collision: Row | null;
 };
 let state: State;
 function reset() {
-  state = { userId: owner, reading: true, rows: [], inserted: null, inserts: 0, generates: 0,
-    failReading: false, failLookup: false, failInsert: false, failGenerate: false, collision: null };
+  state = { userId: owner, reading: true, rows: [], inserted: null, inserts: 0, updates: 0, generates: 0,
+    retries: [], seenOtherTopics: [], generated: [], failReading: false, failLookup: false, failSameDay: false,
+    failInsert: false, failUpdate: false, failGenerate: false, collision: null };
 }
 function savedRow(overrides: Row = {}): Row {
   return { user_id: owner, birth_date: birthDate, birth_time: birthTime,
-    fortune_date: date, today_pillar: pillar, fortune_version: 1, model: "gemini-test", ...texts, ...overrides };
+    fortune_date: date, today_pillar: pillar, fortune_version: 2, model: "gemini-test", ...texts, ...overrides };
 }
 class Query {
   private filters: Array<[string, unknown]> = [];
-  private action: "select" | "insert" = "select";
+  private action: "select" | "insert" | "update" = "select";
   private value: Row | null = null;
   constructor(private table: string) {}
   select() { return this; }
   eq(key: string, value: unknown) { this.filters.push([key, value]); return this; }
   limit() { return this; }
   insert(value: Row) { this.action = "insert"; this.value = value; return this; }
+  update(value: Row) { this.action = "update"; this.value = value; return this; }
+  then(resolve: (value: { data: Row[] | null; error: { code: string } | null }) => unknown) {
+    return Promise.resolve(this.finishAll()).then(resolve);
+  }
   maybeSingle() { return this.finish(); }
   single() { return this.finish(); }
+  private finishAll() {
+    assert.equal(this.table, "saju_daily_topic_fortunes");
+    if (state.failSameDay) return { data: null, error: { code: "PGRST500" } };
+    return { data: state.rows.filter((row) => this.filters.every(([key, value]) => row[key] === value)), error: null };
+  }
   private finish() {
     if (this.table === "saju_interpretations") {
       if (state.failReading) return { data: null, error: { code: "PGRST500" } };
@@ -59,6 +75,14 @@ class Query {
       return { data: state.reading && ownerMatches && dateMatches && timeMatches ? { id: "reading" } : null, error: null };
     }
     assert.equal(this.table, "saju_daily_topic_fortunes");
+    if (this.action === "update") {
+      state.updates++;
+      if (state.failUpdate) return { data: null, error: { code: "PGRST500" } };
+      const found = state.rows.find((row) => this.filters.every(([key, value]) => row[key] === value));
+      if (!found) return { data: null, error: { code: "PGRST404" } };
+      Object.assign(found, this.value);
+      return { data: found, error: null };
+    }
     if (this.action === "insert") {
       state.inserts++;
       state.inserted = this.value;
@@ -96,10 +120,12 @@ test.before(async () => {
   process.env.GEMINI_API_KEY = "test-key";
   (globalThis as typeof globalThis & { __topicRouteTest: object }).__topicRouteTest = {
     auth() { return state.userId ? { userId: state.userId, supabase: { from(table: string) { return new Query(table); } } } : null; },
-    generate() {
+    generate(...args: unknown[]) {
       state.generates++;
+      state.retries.push(args[5] as number);
+      state.seenOtherTopics.push(args[6] as unknown[]);
       if (state.failGenerate) throw new Error("gemini failed");
-      return texts;
+      return state.generated.shift() ?? texts;
     },
   };
   const built = await build({ entryPoints: [join(process.cwd(), "app/api/daily-topic-fortune/route.ts")],
@@ -156,7 +182,8 @@ test("015: 새 문구는 서버의 사용자·한국 날짜·정오 일주로 �
 test("015: 다른 사용자·사주·날짜의 행과 손상된 행은 사용하지 않는다", async () => {
   reset();
   state.rows.push(savedRow({ user_id: other }));
-  state.rows.push(savedRow({ birth_date: "2001-01-01" }));
+  state.rows.push(savedRow({ birth_date: "2001-01-01", money: "지난 사주의 작은 소비 기록을 살펴보는 하루로 만들어 보세요.",
+    health: "지난 사주에 맞게 산책할 시간을 생활 속에 마련해 보세요.", work: "지난 사주에 맞게 메모를 정리하며 대화를 시작해 보세요." }));
   state.rows.push(savedRow({ fortune_date: "2020-01-01" }));
   assert.equal((await post({ date: birthDate, time: birthTime })).status, 200);
   assert.equal(state.generates, 1);
@@ -165,6 +192,134 @@ test("015: 다른 사용자·사주·날짜의 행과 손상된 행은 사용하
   assert.equal(response.status, 503);
   assert.equal(state.generates, 0);
   assert.equal(state.inserts, 0);
+});
+
+test("016: 다른 출생정보의 한 항목이라도 공백만 다른 동일 문구면 기존 행을 갱신한다", async () => {
+  reset();
+  const first = savedRow();
+  const second = savedRow({ birth_date: "2001-01-01", money: texts.money.replaceAll(" ", "  "),
+    health: "다른 사주를 위한 건강 문장을 오늘의 리듬에 맞춰 읽어 보세요.",
+    work: "다른 사주의 할 일을 적어 두고 차례로 검토해 보세요." });
+  state.rows.push(first, second);
+  const fresh = { money: "오늘 쓸 금액을 작은 항목별로 적어 보고 여유를 살펴보세요.",
+    health: "계단을 오르기 전후에 잠깐 숨을 고르며 몸의 감각을 살펴보세요.",
+    work: "오늘 할 일을 짧게 적고 함께할 사람과 진행 순서를 나눠 보세요." };
+  state.generated.push(fresh);
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).fortune.money, fresh.money);
+  assert.equal(state.updates, 1);
+  assert.equal(state.inserts, 0);
+  assert.equal(state.generates, 1);
+  assert.equal(first.money, fresh.money);
+  assert.equal(first.user_id, owner);
+  assert.equal(first.birth_date, birthDate);
+  assert.equal(second.money, texts.money.replaceAll(" ", "  "));
+});
+
+test("016: 이전 프롬프트 버전의 저장 행은 문구가 겹치지 않아도 새 버전으로 갱신한다", async () => {
+  reset();
+  const old = savedRow({ fortune_version: 1 });
+  const otherBirth = savedRow({ birth_date: "2001-01-01", money: "별도의 소비 기록을 보며 필요한 선택을 천천히 정리해 보세요.",
+    health: "별도의 휴식 시간을 정하고 생활 속에서 움직여 보세요.",
+    work: "별도의 메모를 적고 할 일의 순서를 사람들과 나눠 보세요." });
+  state.rows.push(old, otherBirth);
+  const fresh = { money: "오래된 목록을 확인하고 오늘 필요한 구매만 골라 적어 보세요.",
+    health: "틈틈이 몸을 움직이며 쉬는 시간을 스스로 정해 보세요.",
+    work: "작은 업무부터 정리하고 전달할 내용을 간결하게 적어 보세요." };
+  state.generated.push(fresh);
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 200);
+  assert.equal(state.generates, 1);
+  assert.equal(state.updates, 1);
+  assert.deepEqual(state.seenOtherTopics[0], [{ money: otherBirth.money, health: otherBirth.health, work: otherBirth.work }]);
+  assert.equal(old.fortune_version, 2);
+  assert.equal(old.money, fresh.money);
+});
+
+test("016: 새 행은 중복 문구를 최대 세 번 거르고 구분되는 문구만 저장한다", async () => {
+  reset();
+  state.rows.push(savedRow({ birth_date: "2001-01-01" }));
+  const fresh = { money: "잔돈이 쓰인 곳을 살펴보고 필요한 물건 목록을 정리해 보세요.",
+    health: "잠시 창밖을 바라보며 쉬는 시간을 생활 속에 마련해 보세요.",
+    work: "메모를 나눠서 순서를 잡고 서로의 생각을 확인해 보세요." };
+  state.generated.push(texts, fresh);
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 200);
+  assert.equal(state.generates, 2);
+  assert.deepEqual(state.retries, [0, 1]);
+  assert.equal(state.inserted?.money, fresh.money);
+  assert.equal(state.inserts, 1);
+});
+
+test("016: 세 번 모두 중복이면 행을 새로 쓰거나 옛 중복 행을 성공으로 반환하지 않는다", async () => {
+  reset();
+  const existing = savedRow();
+  state.rows.push(existing, savedRow({ birth_date: "2001-01-01" }));
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 502);
+  assert.equal(state.generates, 3);
+  assert.equal(state.updates, 0);
+  assert.equal(state.inserts, 0);
+  assert.equal(existing.money, texts.money);
+  assert.equal((await response.json()).saved, undefined);
+});
+
+test("016: 중복 행 재생성의 Gemini 실패는 기존 행을 유지한다", async () => {
+  reset();
+  const old = savedRow();
+  state.rows.push(old, savedRow({ birth_date: "2001-01-01" }));
+  state.failGenerate = true;
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 502);
+  assert.equal(state.updates, 0);
+  assert.equal(state.inserts, 0);
+  assert.equal(old.money, texts.money);
+});
+
+test("016: 같은 날 다른 출생정보 조회 실패와 중복 행 갱신 실패는 저장 성공이 아니다", async () => {
+  reset(); state.failSameDay = true;
+  let response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 503);
+  assert.equal(state.generates, 0);
+  reset();
+  state.rows.push(savedRow(), savedRow({ birth_date: "2001-01-01" }));
+  state.generated.push({ money: "새로운 소비 메모를 작성하고 작은 지출부터 살펴보세요.",
+    health: "쉬는 시간을 먼저 정하고 가벼운 움직임을 곁들여 보세요.",
+    work: "생각을 먼저 적고 상대의 의견을 들으며 순서를 정해 보세요." });
+  state.failUpdate = true;
+  response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).fortune, undefined);
+  assert.equal(state.updates, 1);
+  assert.equal(state.rows[0].money, texts.money);
+});
+
+test("016: 다른 계정의 같은 문구는 중복 검사와 갱신 대상에서 제외한다", async () => {
+  reset();
+  state.rows.push(savedRow({ user_id: other, birth_date: "2001-01-01" }));
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 200);
+  assert.equal(state.generates, 1);
+  assert.equal(state.inserts, 1);
+  assert.equal(state.updates, 0);
+});
+
+test("016: 삽입 충돌 후 재조회한 행이 다른 출생정보와 중복이면 교체한다", async () => {
+  reset();
+  const otherBirth = savedRow({ birth_date: "2001-01-01" });
+  const collided = savedRow();
+  state.rows.push(otherBirth);
+  state.collision = collided;
+  const fresh = { money: "필요한 항목을 적어 보고 작은 구매부터 차근히 살펴보세요.",
+    health: "잠깐 눈을 감고 숨을 고르며 편안한 시간을 마련해 보세요.",
+    work: "떠오른 의견을 적은 뒤 차례대로 나눌 준비를 해 보세요." };
+  state.generated.push(fresh);
+  const response = await post({ date: birthDate, time: birthTime });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).fortune.money, fresh.money);
+  assert.equal(collided.money, fresh.money);
+  assert.equal(state.rows.length, 2);
 });
 
 test("015: 동시 삽입 충돌은 저장된 행을 다시 읽는다", async () => {

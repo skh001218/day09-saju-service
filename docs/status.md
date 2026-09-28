@@ -21,3 +21,4 @@ Spec을 만들면 아래 목록에 파일명을 추가합니다. 구현과 검�
 - [ ] `013-vercel-daily-fortune-cron.md`
 - [x] `014-daily-fortune-database.md`
 - [ ] `015-daily-topic-fortunes.md`
+- [ ] `016-personalized-daily-topic-fortunes.md`

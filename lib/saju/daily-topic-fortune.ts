@@ -1,4 +1,4 @@
-export const TOPIC_FORTUNE_VERSION = 1;
+export const TOPIC_FORTUNE_VERSION = 2;
 
 export type DailyTopicFortune = {
   date: string;
@@ -7,6 +7,15 @@ export type DailyTopicFortune = {
   health: string;
   work: string;
 };
+
+export function hasDuplicateTopic(
+  candidate: Pick<DailyTopicFortune, "money" | "health" | "work">,
+  others: Array<Pick<DailyTopicFortune, "money" | "health" | "work">>,
+): boolean {
+  const normalize = (value: string) => value.replace(/\s+/g, "").trim();
+  return others.some((other) =>
+    (["money", "health", "work"] as const).some((topic) => normalize(candidate[topic]) === normalize(other[topic])));
+}
 
 const prohibited = /(?:수익률|투자\s*종목|대출\s*(?:받|결정)|진단|치료|약\s*복용|처방|합격|승진|해고|반드시|확실히|틀림없이|암|당뇨|우울증)/;
 

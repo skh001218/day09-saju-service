@@ -1,11 +1,12 @@
 import { calculate, InputError, todayInKorea } from "../../../lib/saju/chart";
-import { TOPIC_FORTUNE_VERSION, parseDailyTopicFortune, type DailyTopicFortune } from "../../../lib/saju/daily-topic-fortune";
+import { TOPIC_FORTUNE_VERSION, hasDuplicateTopic, parseDailyTopicFortune, type DailyTopicFortune } from "../../../lib/saju/daily-topic-fortune";
 import { GEMINI_MODEL, GeminiError } from "../../../lib/saju/gemini";
 import { generateDailyTopicFortune } from "../../../lib/saju/topic-gemini";
 import { getResultsClient } from "../../../lib/supabase/results";
 
 export const runtime = "nodejs";
 const columns = "fortune_date, today_pillar, money, health, work, fortune_version, model";
+const topics = "birth_date, birth_time, money, health, work";
 
 function result(body: object, status: number) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -56,20 +57,45 @@ export async function POST(request: Request) {
     .eq("user_id", userId).eq("birth_date", source.date).eq("birth_time", source.time).eq("fortune_date", date).maybeSingle();
   const { data: existing, error: lookupError } = await findSaved();
   if (lookupError) return result({ error: "주제별 운세 저장 상태를 확인하지 못했습니다. 다시 시도해 주세요." }, 503);
+  const { data: sameDay, error: sameDayError } = await supabase.from("saju_daily_topic_fortunes")
+    .select(topics).eq("user_id", userId).eq("fortune_date", date);
+  if (sameDayError || !sameDay) return result({ error: "다른 사주의 주제별 운세를 확인하지 못했습니다. 다시 시도해 주세요." }, 503);
+  const otherTopics = sameDay.filter((row) => row.birth_date !== source.date ||
+    String(row.birth_time).slice(0, 5) !== source.time)
+    .filter((row) => typeof row.money === "string" && typeof row.health === "string" && typeof row.work === "string")
+    .map((row) => ({ money: row.money as string, health: row.health as string, work: row.work as string }));
   if (existing) {
     const saved = readStored(existing, date, todayPillar);
     if (!saved) return result({ error: "저장된 주제별 운세를 읽을 수 없습니다. 다시 시도해 주세요." }, 503);
-    return result({ fortune: saved, saved: true }, 200);
+    if (existing.fortune_version === TOPIC_FORTUNE_VERSION && !hasDuplicateTopic(saved, otherTopics))
+      return result({ fortune: saved, saved: true }, 200);
   }
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return result({ error: "Gemini API 키가 설정되지 않았습니다. 설정 후 다시 시도해 주세요." }, 503);
   let fortune: DailyTopicFortune;
   try {
-    const texts = await generateDailyTopicFortune(chart, date, todayPillar, apiKey);
-    fortune = { date, todayPillar, ...texts };
+    let generated: DailyTopicFortune | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const texts = await generateDailyTopicFortune(chart, date, todayPillar, apiKey, fetch, attempt, otherTopics);
+      const candidate = { date, todayPillar, ...texts };
+      if (!hasDuplicateTopic(candidate, otherTopics)) { generated = candidate; break; }
+    }
+    if (!generated) throw new GeminiError("다른 사주와 구분되는 운세를 만들지 못했습니다. 다시 시도해 주세요.", 502);
+    fortune = generated;
   } catch (error) {
     return result({ error: error instanceof GeminiError ? error.message : "주제별 운세를 가져오지 못했습니다. 다시 시도해 주세요." }, error instanceof GeminiError ? error.status : 502);
+  }
+
+  if (existing) {
+    const { data: updated, error: updateError } = await supabase.from("saju_daily_topic_fortunes")
+      .update({ money: fortune.money, health: fortune.health, work: fortune.work,
+        fortune_version: TOPIC_FORTUNE_VERSION, model: GEMINI_MODEL })
+      .eq("user_id", userId).eq("birth_date", source.date).eq("birth_time", source.time).eq("fortune_date", date)
+      .select(columns).single();
+    const saved = !updateError && updated ? readStored(updated, date, todayPillar) : null;
+    if (!saved) return result({ error: "중복된 주제별 운세를 교체하지 못했습니다. 다시 시도해 주세요." }, 503);
+    return result({ fortune: saved, saved: true }, 200);
   }
 
   const { data: inserted, error: insertError } = await supabase.from("saju_daily_topic_fortunes")
@@ -82,6 +108,16 @@ export async function POST(request: Request) {
     if (repeatedError || !repeated) return result({ error: "저장된 주제별 운세를 확인하지 못했습니다. 다시 시도해 주세요." }, 503);
     const saved = readStored(repeated, date, todayPillar);
     if (!saved) return result({ error: "저장된 주제별 운세를 읽을 수 없습니다. 다시 시도해 주세요." }, 503);
+    if (repeated.fortune_version !== TOPIC_FORTUNE_VERSION || hasDuplicateTopic(saved, otherTopics)) {
+      const { data: updated, error: updateError } = await supabase.from("saju_daily_topic_fortunes")
+        .update({ money: fortune.money, health: fortune.health, work: fortune.work,
+          fortune_version: TOPIC_FORTUNE_VERSION, model: GEMINI_MODEL })
+        .eq("user_id", userId).eq("birth_date", source.date).eq("birth_time", source.time).eq("fortune_date", date)
+        .select(columns).single();
+      const refreshed = !updateError && updated ? readStored(updated, date, todayPillar) : null;
+      if (!refreshed) return result({ error: "중복된 주제별 운세를 교체하지 못했습니다. 다시 시도해 주세요." }, 503);
+      return result({ fortune: refreshed, saved: true }, 200);
+    }
     return result({ fortune: saved, saved: true }, 200);
   }
   const saved = !insertError && inserted ? readStored(inserted, date, todayPillar) : null;
