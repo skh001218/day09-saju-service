@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { build, type Plugin } from "esbuild";
@@ -206,10 +206,7 @@ test("DB 조회·저장 실패와 잘못된 출생 입력은 성공으로 처리
 });
 
 test("일일 운세 migration은 계정·출생 입력·날짜를 고유하게 묶고 RLS를 적용한다", async () => {
-  const names = await readdir(join(process.cwd(), "supabase/migrations"));
-  const name = names.find((item) => item.includes("daily_fortune") && item.endsWith(".sql"));
-  assert.ok(name, "일일 운세 migration이 필요합니다");
-  const sql = await readFile(join(process.cwd(), "supabase/migrations", name), "utf8");
+  const sql = await readFile(join(process.cwd(), "supabase/migrations/20260928000200_create_saju_daily_fortunes.sql"), "utf8");
   assert.match(sql, /create table(?:\s+if not exists)?\s+public\.saju_daily_fortunes/i);
   assert.match(sql, /unique\s*\(\s*user_id\s*,\s*birth_date\s*,\s*birth_time\s*,\s*fortune_date\s*\)/i);
   assert.match(sql, /enable row level security/i);

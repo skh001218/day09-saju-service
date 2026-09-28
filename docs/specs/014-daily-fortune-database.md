@@ -1,4 +1,4 @@
-# 013: 일일 운세 계정 DB 저장
+# 014: 일일 운세 계정 DB 저장
 
 ## 목적과 사용자 정책
 
@@ -13,7 +13,7 @@
 
 ## 데이터 모델과 접근 제어
 
-새 테이블 `public.saju_daily_fortunes`를 재현 가능한 SQL migration으로 만듭니다.
+새 테이블 `public.saju_daily_fortunes`를 재현 가능한 SQL migration으로 만듭니다. `013-vercel-daily-fortune-cron.md`의 계정별 대표 출생정보·예약 운세와 구분해, 이 Spec은 사용자가 화면에서 연 출생 사주마다 스냅샷을 보관합니다.
 
 | 열 | 형식·제약 | 의미 |
 |---|---|---|
@@ -59,3 +59,4 @@
 - 제공받은 `sta-saju` Supabase 프로젝트(`dsqxrsqynqbspfkxbnaw`)의 SQL Editor에서 같은 이름의 테이블이 없는 것을 확인한 뒤 migration을 실행했고 `Success. No rows returned`를 확인했습니다. 다시 조회해 테이블 존재, RLS 활성화, 본인 행 조회·삽입 정책 2개, 계정·출생 정보·날짜의 고유 제약 1개를 확인했습니다. `anon`의 `SELECT`와 `authenticated`의 `UPDATE`·`DELETE` 권한은 없고, `authenticated`의 `SELECT`·`INSERT` 권한만 있습니다.
 - Supabase 프로젝트의 공개 연결 설정을 로컬 실행 프로세스에만 주입하고 사용자 Google 로그인 후 기존 브라우저 기록 `2000-01-01 12:00`을 열었습니다. 화면에서 `계정에 저장됐어요.`를 확인했고, 새로고침 후 같은 기록을 다시 열어도 저장 상태와 문구가 유지됐습니다. SQL Editor에서 해당 사주·날짜의 행이 **1건**이고 저장된 `flow`가 화면 문구와 일치함을 확인했습니다. 기존 브라우저 기록 자체는 계정 해석 목록으로 이전되지 않았습니다.
 - 로컬 검증용 공개 키는 코드와 Git에 저장하지 않았습니다. 현재 코드의 배포 후 실제 URL 동작은 이번 검증에 포함하지 않았습니다.
+- `main`에 별도 예약 저장 기능(013)이 먼저 병합되어 이 문서를 014로, migration을 `20260928000200`으로 정리했습니다. 통합 후 `npm run check`에서 타입 검사와 전체 테스트 104개가 통과했고 `npm run build`도 통과했습니다. 실제 DB에 적용한 이 Spec의 테이블 구조는 동일합니다.
