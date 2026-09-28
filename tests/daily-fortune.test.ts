@@ -71,7 +71,7 @@ test("012: 잘못된 날짜와 손상된 사주를 개인화된 운세로 바꾸
 test("012: 계산 결과와 재열기 화면은 현재 한국 날짜의 운세를 표시하고 자정에 갱신한다", async () => {
   const form = await readFile(join(process.cwd(), "app/saju-form.tsx"), "utf8");
   const section = await readFile(join(process.cwd(), "app/daily-fortune.tsx"), "utf8");
-  assert.match(form, /<DailyFortuneSection chart=\{chart\}/);
+  assert.match(form, /<DailyFortuneSection\s+chart=\{chart\}\s+birthDate=\{calculatedInput\.date\}\s+birthTime=\{calculatedInput\.time\}\s+userId=\{authUser\?\.id \?\? null\}/);
   assert.match(section, /todayInKorea\(now\)/);
   assert.match(section, /setTimeout\(update, untilNextKoreanDay\(now\)\)/);
   assert.match(section, /visibilitychange/);

@@ -9,7 +9,7 @@ export type DailyFortune = FortuneText & {
   todayPillar: string;
 };
 
-const FORTUNE_VERSION = 1;
+export const FORTUNE_VERSION = 1;
 const words: Record<Relation, readonly FortuneText[]> = {
   same: [
     { flow: "익숙한 방식에서 편안함을 찾기 좋은 하루예요.", action: "하던 일 하나를 차분히 마무리해 보세요.", caution: "익숙하다는 이유로 다른 의견을 지나치지 마세요." },
@@ -44,6 +44,25 @@ function validDate(date: string): boolean {
   const parsed = new Date(Date.UTC(year, month - 1, day));
   return parsed.getUTCFullYear() === year && parsed.getUTCMonth() + 1 === month &&
     parsed.getUTCDate() === day;
+}
+
+export function parseDailyFortune(value: unknown): DailyFortune | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.date !== "string" || !validDate(row.date) ||
+    typeof row.todayPillar !== "string" ||
+    !/^[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]$/.test(row.todayPillar) ||
+    [row.flow, row.action, row.caution].some((text) =>
+      typeof text !== "string" || text.trim().length < 1 || text.trim().length > 300)) {
+    return null;
+  }
+  return {
+    date: row.date,
+    todayPillar: row.todayPillar,
+    flow: (row.flow as string).trim(),
+    action: (row.action as string).trim(),
+    caution: (row.caution as string).trim(),
+  };
 }
 
 function relation(self: ElementName, today: ElementName): Relation {
