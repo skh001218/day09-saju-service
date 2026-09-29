@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { calculate, todayInKorea } from "../lib/saju/chart";
-import { parseDailyTopicFortune } from "../lib/saju/daily-topic-fortune";
+import { hasDuplicateTopic, parseDailyTopicFortune } from "../lib/saju/daily-topic-fortune";
 import { generateDailyTopicFortune, makeDailyTopicPrompt } from "../lib/saju/topic-gemini";
 
 const birthDate = "2000-01-01";
@@ -56,6 +56,28 @@ test("015: Gemini 프롬프트는 사주와 오늘 일주만 전달하며 개인
   for (const field of ["money", "health", "work"]) assert.ok(prompt.includes(field));
 });
 
+test("016: 같은 주제의 문구만 공백을 정규화해 다른 출생정보의 중복으로 판정한다", () => {
+  const other = { ...valid, money: valid.money.replaceAll(" ", "\n  ") };
+  assert.equal(hasDuplicateTopic(valid, [other]), true);
+  assert.equal(hasDuplicateTopic(valid, [{ ...valid, money: "완전히 다른 소비 습관을 살펴보는 문장입니다.",
+    health: "다른 몸의 리듬을 살펴보는 생활 문장입니다.", work: "다른 업무 제안을 나눠보는 생활 문장입니다." }]), false);
+  assert.equal(hasDuplicateTopic(valid, []), false);
+});
+
+test("016: 프롬프트는 한글 기둥과 재생성 맥락을 담되 원문 출생정보를 보내지 않는다", () => {
+  const otherAdvice = { money: "이미 사용한 소비 제안의 내용입니다.", health: "이미 사용한 휴식 제안의 내용입니다.",
+    work: "이미 사용한 협업 제안의 내용입니다." };
+  const prompt = makeDailyTopicPrompt(chart, date, pillar, 1, [otherAdvice]);
+  for (const item of chart.pillars) assert.ok(prompt.includes(item.korean));
+  assert.ok(prompt.includes("다른 출생 사주"));
+  assert.ok(prompt.includes("오늘 일주"));
+  assert.ok(prompt.includes(otherAdvice.money));
+  assert.ok(prompt.includes(otherAdvice.health));
+  assert.ok(prompt.includes(otherAdvice.work));
+  assert.equal(prompt.includes(birthDate), false);
+  assert.equal(prompt.includes(birthTime), false);
+});
+
 test("015: Gemini 구조화 응답 세 문구를 검증하고 잘못된 응답은 전체 실패로 처리한다", async () => {
   const calls: Array<{ url: string; init: RequestInit }> = [];
   const fetcher = (async (url: string, init: RequestInit) => {
@@ -99,6 +121,17 @@ test("015: migration은 계정·출생정보·날짜 고유 제약과 읽기·�
   assert.match(files, /for insert to authenticated/i);
   assert.doesNotMatch(files, /grant\s+update\b/i);
   assert.doesNotMatch(files, /grant\s+[^;]*\bto\s+anon\b/i);
+});
+
+test("016: 갱신 권한은 본인 행의 문구·버전·모델 열로 제한한다", async () => {
+  const directory = join(process.cwd(), "supabase/migrations");
+  const migration = (await readdir(directory)).find((name) => name.includes("allow_topic_fortune_refresh") && name.endsWith(".sql"));
+  assert.ok(migration, "주제별 운세 갱신 migration이 필요합니다");
+  const sql = await readFile(join(directory, migration), "utf8");
+  assert.match(sql, /grant\s+update\s*\(\s*money\s*,\s*health\s*,\s*work\s*,\s*fortune_version\s*,\s*model\s*\)/i);
+  assert.match(sql, /for update to authenticated\s+using\s*\(user_id\s*=\s*\(select auth\.uid\(\)\)\)\s+with check\s*\(user_id\s*=\s*\(select auth\.uid\(\)\)\)/i);
+  assert.doesNotMatch(sql, /grant\s+update\s+on\s+table/i);
+  assert.doesNotMatch(sql, /grant\s+[^;]*\bto\s+anon\b/i);
 });
 
 test("015: 계정 해석 화면에만 연결되고 자정·탭 복귀·늦은 응답을 처리한다", async () => {
